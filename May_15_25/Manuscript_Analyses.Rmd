@@ -22,8 +22,7 @@ All data is hosted on github. Please see the following for information on how to
 Excel sheet with e a table comparing the different R shiny applications availabel for batche effect analysis.
 
 ```{R App Comparison Data}
-app_comparison_location <- "~/Documents/workProjects/Papers/BatchQC2.0/BatchQCv2_Manuscript/Data/ShinyAppBatchCorrectionToolComparison.csv"
-# "https://raw.githubusercontent.com/jessmcc22/BatchQCv2_Manuscript/refs/heads/devel/Data/ShinyAppBatchCorrectionToolComparison.csv"
+app_comparison_location <- "https://raw.githubusercontent.com/jessmcc22/lab_meeting/refs/heads/devel/May_15_25/Data/ShinyAppBatchCorrectionToolComparison.csv"
 
 app_comparison_data <- read.csv(app_comparison_location, header = TRUE)
 ```
@@ -42,11 +41,7 @@ are 2515 unique images.
 ```{R ADNI data}
 ADNI_data_location <- "https://raw.githubusercontent.com/ntustison/CrossLong/refs/heads/master/Data/reconciled_ANTsSST.csv"
 
-ADNI_additional_metadata_location <- "~/Documents/workProjects/Papers/BatchQC2.0/ADNI_data_analysis_files/protocol_preprocessed_2019_03_01.csv"
-
-#"https://raw.githubusercontent.com/jessmcc22/BatchQCv2_Manuscript/refs/heads/devel/Data/protocol_preprocessed_2019_03_01.csv
-
-# IS THIS DATA HOSTED ELSEWHERE THAT I CAN CALL IT? OR DOES IT NEED TO BE HOSTED ON MY REPOSITORY
+ADNI_additional_metadata_location <- "https://raw.githubusercontent.com/jessmcc22/lab_meeting/refs/heads/devel/May_15_25/Data/protocol_preprocessed_2019_03_01.csv"
 
 ADNI_data <- read.csv(ADNI_data_location, header = TRUE)
 ADNI_additional_metadata <- read.csv(ADNI_additional_metadata_location,
@@ -256,9 +251,6 @@ ComBat_assay <- "ComBat_cortical_thickness"
 ```
 
 ### Other Data
-
-
-
 
 ```{R Data Preprocessing}
 
