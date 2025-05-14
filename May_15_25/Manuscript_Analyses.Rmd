@@ -1,0 +1,266 @@
+---
+title: "Manuscript_Analyses"
+author: "Jessica McClintock"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+## Setup
+
+```{R Setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(BatchQC)
+library(SummarizedExperiment)
+```
+
+### Data Retrieval
+All data is hosted on github. Please see the following for information on how to retrieve each data set used in the analysis.
+
+#### App Comparison Data
+Excel sheet with e a table comparing the different R shiny applications availabel for batche effect analysis.
+
+```{R App Comparison Data}
+app_comparison_location <- "~/Documents/workProjects/Papers/BatchQC2.0/BatchQCv2_Manuscript/Data/ShinyAppBatchCorrectionToolComparison.csv"
+# "https://raw.githubusercontent.com/jessmcc22/BatchQCv2_Manuscript/refs/heads/devel/Data/ShinyAppBatchCorrectionToolComparison.csv"
+
+app_comparison_data <- read.csv(app_comparison_location, header = TRUE)
+```
+
+#### ADNI Data
+Alzheimer's imaging data provided by Taki Shinohara (UPenn). In this data
+set, three different scanners were used (Siemens Healthineers (n=96), Philips
+Medical Systems (n = 96) or GE Healthcare (n = 287)) and in a previous analysis
+done with DeepComBat, a batch effect was seen between Siemens and Philips/GE
+(combined as one batch) scanners. We are hoping to recreate this batch effect
+with BatchQC when comparing Alzheimer diagnosis (cognitively normal (CN), late
+mild cognitive impairment (LMCI) and Alzheimer disease (AD)). To note, this data
+includes up to 6 images for each subject taken at different visits, thus there
+are 2515 unique images.
+
+```{R ADNI data}
+ADNI_data_location <- "https://raw.githubusercontent.com/ntustison/CrossLong/refs/heads/master/Data/reconciled_ANTsSST.csv"
+
+ADNI_additional_metadata_location <- "~/Documents/workProjects/Papers/BatchQC2.0/ADNI_data_analysis_files/protocol_preprocessed_2019_03_01.csv"
+
+#"https://raw.githubusercontent.com/jessmcc22/BatchQCv2_Manuscript/refs/heads/devel/Data/protocol_preprocessed_2019_03_01.csv
+
+# IS THIS DATA HOSTED ELSEWHERE THAT I CAN CALL IT? OR DOES IT NEED TO BE HOSTED ON MY REPOSITORY
+
+ADNI_data <- read.csv(ADNI_data_location, header = TRUE)
+ADNI_additional_metadata <- read.csv(ADNI_additional_metadata_location,
+    header = TRUE)
+```
+
+## Introduction
+
+### Figure 1: R Shiny Batch Effect Application Comparison
+Many different R Shiny apps exist that streamline data exploration, analysis and
+visualization of batch correction analyses. The methods and tools available in
+some common applications are compared in the below table. The information in
+this table was obtained from the accompanying manuscript publication for each
+application. The table presented in our paper was formatted in excel and a
+simpler, unformatted table with the same information is presented below.
+
+```{R Application Comparison, results = "asis"}
+knitr::kable(app_comparison_data)
+```
+
+## Methods
+
+### Lambda Statistic
+
+### Model Selection Checks
+
+### Data Examples
+
+#### ADNI Data
+
+The original data set includes multiple images for each subject taken in a
+longitudinal manner at multiple different visits. For our analysis, we are
+interested in comparing the baseline images at the first visit. The set of
+images also contain images of various locations in the brain and for this
+analysis, we will focus on the temporal location.
+
+```{R Analysis Options}
+VISIT_NUMBER <- 0
+BRAIN_LOCATION <- "temporal"
+```
+
+Tidy the downloaded file into metadata and cortical thickness dataframes
+
+```{r Create Thickness and Metadate DF}
+ADNI_data_t0 <- ADNI_data[order(ADNI_data$IMAGE_ID),] %>% 
+    filter(VISIT == VISIT_NUMBER)
+Image_ID <- as.character(ADNI_data_t0$IMAGE_ID)
+ADNI_metadata <- as.data.frame(ADNI_data_t0[,1:8], row.names = Image_ID)
+cortical_thickness <- (as.data.frame(ADNI_data_t0[,9:70], row.names = Image_ID))
+```
+
+Subset cortical thickness measures based on location of interest.
+
+```{r Create Location Assays}
+specific_location_data <- cortical_thickness %>%
+    select(contains(BRAIN_LOCATION)) %>% 
+    t()
+cortical_thickness <- t(cortical_thickness)
+
+```
+
+Tidy the data by creating a column name that contains all the scan locations and
+a column name with the thickness values
+
+```{r Tidy the Data}
+tidy_ADNI <- ADNI_data_t0 %>%
+    pivot_longer(9:dim(ADNI_data_t0)[2], names_to = "LOCATION", values_to = "THICKNESS")
+```
+
+The acquisition site is a three number code within the `ID` column prior to the
+`_S_` identifier. Use this to create a new column containing only the
+acquisition site number to be used as a batch variable.
+
+```{r Create Site Variable}
+ADNI_metadata <- ADNI_metadata %>% 
+    separate_wider_position(ID, 
+        c(SITE = 3, 1, SAMPLE_ID = 6),
+        cols_remove = FALSE)
+
+ADNI_metadata <- as.data.frame(ADNI_metadata)
+```
+
+The scanner data is contained in the extra metadata file (not hosted on github,
+provided by Taki to Jessica). Using the ImageUID in the scanner data, combine
+this with the ImageID in the metadata and retain the scanner type
+(Manufacturer). Modify manufacturer to exclude spaces.
+
+```{R Obtain Scanner Info}
+manufacturer_data <- ADNI_additional_metadata %>%
+    select(imageUID, Manufacturer)
+metadata_scanner <- merge(ADNI_metadata, manufacturer_data, by.x = "IMAGE_ID", by.y = "imageUID", all.x = TRUE)
+
+for (i in 1:length(metadata_scanner$Manufacturer)){
+    if(metadata_scanner$Manufacturer[i] == "GE MEDICAL SYSTEMS" ||
+            metadata_scanner$Manufacturer[i] == "Philips Medical Systems"){
+        metadata_scanner$Manufacturer[i] <- "GE_PHILLIPS"
+    }
+}
+
+row.names(metadata_scanner) <- metadata_scanner$IMAGE_ID
+```
+
+Convert the columns to factors for downstream analyses.
+
+```{R Convert to Factors}
+metadata_scanner$SITE <- as.factor(metadata_scanner$SITE)
+metadata_scanner$VISIT <- as.factor(metadata_scanner$VISIT)
+metadata_scanner$DIAGNOSIS <- as.factor(metadata_scanner$DIAGNOSIS)
+metadata_scanner$SEX <- as.factor(metadata_scanner$SEX)
+metadata_scanner$Manufacturer <- as.factor(metadata_scanner$Manufacturer)
+```
+
+Create a summarized experiment object.
+
+```{R SE Object Creation}
+
+ADNI_se <- SummarizedExperiment(assays = list(cortical_thickness = specific_location_data),
+    colData = metadata_scanner, metadata = list(metadata = metadata_scanner))
+```
+
+## Results
+
+### Simulation Data
+
+### ADNI Data
+
+#### Evidence of Batch Effect
+Using BatchQC, we can view the raw data and identify evidence of batch effect
+within the data. 
+
+Below, we set up the variables that we are interested in analyzing: the raw data
+assay, the Manufacturer machine is the variable we suspect a batch effect to
+reside, and the diagnosis variable is where we would expect true differences
+between samples to be found.
+
+```{R Batch Effect Analysis Variables}
+cortical_assay <- "cortical_thickness"
+batch <- "Manufacturer"
+covar <- "DIAGNOSIS"
+```
+
+We plot a PCA plot of the raw data where color represents batch and shape
+represents the diagnosis. The ellipses shows the batch groupings and the
+distinct ellipses indicate that there is a batch effect within the data.
+
+```{R Variation Analysis}
+ex_variation <- BatchQC::batchqc_explained_variation(se = ADNI_se,
+    batch = batch,
+    condition = covar,
+    assay_name = cortical_assay)
+# individual variation
+EV_boxplot <- BatchQC::EV_plotter(batchqc_ev = ex_variation[[1]])
+EV_boxplot
+
+# Type 2 variation
+EV_boxplot_type_2 <- BatchQC::EV_plotter(batchqc_ev = ex_variation[[2]])
+EV_boxplot_type_2
+
+```
+
+```{R ADNI PCA}
+pca_plot <- BatchQC::PCA_plotter(se = ADNI_se, 
+    nfeature = 8, color = batch,
+    shape = covar, batch = batch,
+    assays = cortical_assay,
+    xaxisPC = 1, yaxisPC = 4, log_option = FALSE)
+pca_plot$plot
+```
+
+#### Lambda Statistic to Confirm need for Batch Correction
+We can confirm the need for a batch correction using our new tools. First, we
+will determine if our experiment is a balanced or unbalanced design.
+
+```{R Check for Balanced Design}
+
+```
+
+Next, we calculate the lambda statistic
+
+```{R lambda statistic}
+
+```
+
+Based on this result...
+
+#### Check Model Fit
+We will use our AIC model to check the fit of the data.
+
+```{R Model Fit}
+
+```
+
+Since...., we can proceed with....
+
+#### ComBat Batch Correction
+Use BatchQC to correct for batch effect using ComBat.
+
+```{R ComBat Correction}
+ADNI_se <- BatchQC::batch_correct(se = ADNI_se, 
+    method = "ComBat",
+    assay_to_normalize = cortical_assay, 
+    batch = batch,
+    covar = c(covar, "AGE", "SEX"),
+    output_assay_name = "ComBat_cortical_thickness")
+
+ComBat_assay <- "ComBat_cortical_thickness"
+```
+
+### Other Data
+
+
+
+
+```{R Data Preprocessing}
+
+```
+

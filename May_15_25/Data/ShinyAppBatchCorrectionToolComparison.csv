@@ -1,0 +1,35 @@
+﻿,BatchQC,Batch-FLEX,Batch-Server,DE-Browser
+Batch Corr. Methods,,,,
+SVA,x,x,x,
+ComBat,x,x,,x
+autoComBat,,,x,
+ComBat-Seq,x,x,,
+limma,x,x,,
+Harman,,x,,x
+RUVg,,x,,
+correctBatch,,x,,
+exploBatch,,,,
+,,,,
+Visulaizations,,,,
+PCVA,,x,x,
+UMAP,x,x,x,
+PCA,x,x,,x
+Heatmaps,x,x,,x
+Dendogram,x,,,
+Circular Dendogram,x,,,
+Volcano Plot,x,,,x
+Scree Plot,,x,,
+All2all scatter plots,,,,x
+IQR and Density Plots,x,,,x
+,,,,
+Evalutaions,,,,
+Variation Analysis,x,,x,
+Differential Expression,x,,,x
+Distribution Check,x,,,
+Distribution Check,x,,,
+,,,,
+Additional Features,,,,
+Shiny Interface,x,x,x,x
+Standalone R Functions,x,x,,
+Download  Data,x,x,x,
+Normalization,x,x,,x
