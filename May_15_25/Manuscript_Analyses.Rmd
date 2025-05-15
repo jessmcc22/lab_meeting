@@ -7,7 +7,7 @@ output: pdf_document
 
 ## Setup
 
-```{R Setup, include=FALSE}
+```{R Setup}
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
@@ -16,13 +16,17 @@ library(SummarizedExperiment)
 ```
 
 ### Data Retrieval
-All data is hosted on github. Please see the following for information on how to retrieve each data set used in the analysis.
+All data is hosted on github. Please see the following for information on how to
+retrieve each data set used in the analysis.
 
 #### App Comparison Data
-Excel sheet with e a table comparing the different R shiny applications availabel for batche effect analysis.
+Excel sheet with e a table comparing the different R shiny applications
+available for batch effect analysis.
 
 ```{R App Comparison Data}
-app_comparison_location <- "https://raw.githubusercontent.com/jessmcc22/lab_meeting/refs/heads/devel/May_15_25/Data/ShinyAppBatchCorrectionToolComparison.csv"
+app_comparison_location <- paste0("https://raw.githubusercontent.com/jessmcc22",
+    "/lab_meeting/refs/heads/devel/May_15_25/Data",
+    "/ShinyAppBatchCorrectionToolComparison.csv")
 
 app_comparison_data <- read.csv(app_comparison_location, header = TRUE)
 ```
@@ -39,9 +43,12 @@ includes up to 6 images for each subject taken at different visits, thus there
 are 2515 unique images.
 
 ```{R ADNI data}
-ADNI_data_location <- "https://raw.githubusercontent.com/ntustison/CrossLong/refs/heads/master/Data/reconciled_ANTsSST.csv"
+ADNI_data_location <- paste0("https://raw.githubusercontent.com/ntustison",
+    "/CrossLong/refs/heads/master/Data/reconciled_ANTsSST.csv")
 
-ADNI_additional_metadata_location <- "https://raw.githubusercontent.com/jessmcc22/lab_meeting/refs/heads/devel/May_15_25/Data/protocol_preprocessed_2019_03_01.csv"
+ADNI_additional_metadata_location <- paste0("https://raw.githubusercontent.com",
+    "/jessmcc22/lab_meeting/refs/heads/devel/May_15_25/Data",
+    "/protocol_preprocessed_2019_03_01.csv")
 
 ADNI_data <- read.csv(ADNI_data_location, header = TRUE)
 ADNI_additional_metadata <- read.csv(ADNI_additional_metadata_location,
@@ -108,10 +115,12 @@ a column name with the thickness values
 
 ```{r Tidy the Data}
 tidy_ADNI <- ADNI_data_t0 %>%
-    pivot_longer(9:dim(ADNI_data_t0)[2], names_to = "LOCATION", values_to = "THICKNESS")
+    pivot_longer(9:dim(ADNI_data_t0)[2],
+        names_to = "LOCATION",
+        values_to = "THICKNESS")
 ```
 
-The acquisition site is a three number code within the `ID` column prior to the
+The acquisition site is a three digit code within the `ID` column prior to the
 `_S_` identifier. Use this to create a new column containing only the
 acquisition site number to be used as a batch variable.
 
@@ -132,7 +141,10 @@ this with the ImageID in the metadata and retain the scanner type
 ```{R Obtain Scanner Info}
 manufacturer_data <- ADNI_additional_metadata %>%
     select(imageUID, Manufacturer)
-metadata_scanner <- merge(ADNI_metadata, manufacturer_data, by.x = "IMAGE_ID", by.y = "imageUID", all.x = TRUE)
+metadata_scanner <- merge(ADNI_metadata, manufacturer_data,
+    by.x = "IMAGE_ID",
+    by.y = "imageUID",
+    all.x = TRUE)
 
 for (i in 1:length(metadata_scanner$Manufacturer)){
     if(metadata_scanner$Manufacturer[i] == "GE MEDICAL SYSTEMS" ||
@@ -158,8 +170,10 @@ Create a summarized experiment object.
 
 ```{R SE Object Creation}
 
-ADNI_se <- SummarizedExperiment(assays = list(cortical_thickness = specific_location_data),
-    colData = metadata_scanner, metadata = list(metadata = metadata_scanner))
+ADNI_se <- SummarizedExperiment(
+    assays = list(cortical_thickness = specific_location_data),
+    colData = metadata_scanner,
+    metadata = list(metadata = metadata_scanner))
 ```
 
 ## Results
@@ -183,9 +197,11 @@ batch <- "Manufacturer"
 covar <- "DIAGNOSIS"
 ```
 
-We plot a PCA plot of the raw data where color represents batch and shape
-represents the diagnosis. The ellipses shows the batch groupings and the
-distinct ellipses indicate that there is a batch effect within the data.
+We plot box plots of the percent variation explained by our batch and variable
+of interest. Our first plot shows individual variation and the second plot shows
+type 2 variation. We see that the Manufacturer (batch effect) explains a similar
+amount of variation as Diagnosis (experimental variable), thus indicating the
+presence of a batch effect.
 
 ```{R Variation Analysis}
 ex_variation <- BatchQC::batchqc_explained_variation(se = ADNI_se,
@@ -201,6 +217,10 @@ EV_boxplot_type_2 <- BatchQC::EV_plotter(batchqc_ev = ex_variation[[2]])
 EV_boxplot_type_2
 
 ```
+
+We plot a PCA plot of the raw data where color represents batch and shape
+represents the diagnosis. The ellipses shows the batch groupings and the
+distinct ellipses indicate that there is a batch effect within the data.
 
 ```{R ADNI PCA}
 pca_plot <- BatchQC::PCA_plotter(se = ADNI_se, 
